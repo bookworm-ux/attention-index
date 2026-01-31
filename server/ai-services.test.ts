@@ -14,7 +14,7 @@ describe("AI Services Integration", () => {
       expect(ENV.geminiApiKey.length).toBeGreaterThan(10);
     });
 
-    it("should be able to call Gemini API for signal analysis", async () => {
+    it("should be able to call Gemini API for signal analysis", { timeout: 15000 }, async () => {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${ENV.geminiApiKey}`,
         {
@@ -52,7 +52,7 @@ describe("AI Services Integration", () => {
       expect(ENV.humeApiKey.length).toBeGreaterThan(10);
     });
 
-    it("should be able to authenticate with Hume API", async () => {
+    it("should be able to authenticate with Hume API", { timeout: 15000 }, async () => {
       // Test authentication by checking batch jobs endpoint
       const response = await fetch("https://api.hume.ai/v0/batch/jobs", {
         method: "GET",
@@ -72,7 +72,7 @@ describe("AI Services Integration", () => {
       expect(ENV.elevenLabsApiKey.length).toBeGreaterThan(10);
     });
 
-    it("should be able to fetch user info from ElevenLabs", async () => {
+    it("should be able to fetch user info from ElevenLabs", { timeout: 15000 }, async () => {
       const response = await fetch("https://api.elevenlabs.io/v1/user", {
         headers: {
           "xi-api-key": ENV.elevenLabsApiKey,
@@ -84,7 +84,7 @@ describe("AI Services Integration", () => {
       expect(data.subscription).toBeDefined();
     });
 
-    it("should be able to list available voices", async () => {
+    it("should be able to list available voices", { timeout: 15000 }, async () => {
       const response = await fetch("https://api.elevenlabs.io/v1/voices", {
         headers: {
           "xi-api-key": ENV.elevenLabsApiKey,

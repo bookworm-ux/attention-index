@@ -2,11 +2,13 @@
  * DESIGN: Neo-Brutalist Terminal
  * Right-hand trade panel with short-window contracts
  * Features: Trade Momentum button, Hype Score meter, contract durations
+ * Now with backend integration for market selection and trading
  */
 
-import { useState } from "react";
-import { TrendingUp, TrendingDown, Zap, Clock, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { TrendingUp, TrendingDown, Zap, AlertCircle, Loader2, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 import { MarketData } from "./MarketCard";
 
 interface TradeSidebarProps {
@@ -17,20 +19,150 @@ const contractDurations = [
   { id: "30m", label: "30M", description: "30 minutes" },
   { id: "1h", label: "1H", description: "1 hour" },
   { id: "3h", label: "3H", description: "3 hours" },
-];
+] as const;
+
+type DurationId = typeof contractDurations[number]["id"];
 
 export default function TradeSidebar({ selectedMarket }: TradeSidebarProps) {
-  const [selectedDuration, setSelectedDuration] = useState("1h");
+  const [selectedDuration, setSelectedDuration] = useState<DurationId>("1h");
   const [tradeDirection, setTradeDirection] = useState<"long" | "short">("long");
   const [amount, setAmount] = useState("100");
+  const [isMarketConfirmed, setIsMarketConfirmed] = useState(false);
 
-  const handleTrade = () => {
+  // tRPC mutations
+  const selectMarketMutation = trpc.trading.selectMarket.useMutation();
+  const placeTradeMutation = trpc.trading.placeTrade.useMutation();
+
+  // Reset confirmation when market changes
+  useEffect(() => {
+    setIsMarketConfirmed(false);
+  }, [selectedMarket?.id]);
+
+  // Handle market selection (SELECT A MARKET button)
+  const handleSelectMarket = async () => {
+    if (!selectedMarket) {
+      toast.error("Please click on a market card first");
+      return;
+    }
+
+    try {
+      const result = await selectMarketMutation.mutateAsync({
+        marketId: selectedMarket.id,
+        topic: selectedMarket.topic,
+        category: selectedMarket.category,
+        momentum: selectedMarket.momentum,
+        change24h: selectedMarket.change24h,
+        volume: selectedMarket.volume,
+        hypeScore: selectedMarket.hypeScore,
+      });
+
+      if (result.success) {
+        setIsMarketConfirmed(true);
+        toast.success(result.message, {
+          icon: <CheckCircle className="w-4 h-4 text-[#00FFA3]" />,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to select market:", error);
+      toast.error("Failed to select market. Please try again.");
+    }
+  };
+
+  // Handle trade execution
+  const handleTrade = async () => {
     if (!selectedMarket) {
       toast.error("Select a market first");
       return;
     }
-    toast.success(`${tradeDirection === "long" ? "Long" : "Short"} position opened on ${selectedMarket.topic}`);
+
+    if (!isMarketConfirmed) {
+      // First click confirms the market
+      await handleSelectMarket();
+      return;
+    }
+
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+
+    try {
+      const result = await placeTradeMutation.mutateAsync({
+        marketId: selectedMarket.id,
+        topic: selectedMarket.topic,
+        category: selectedMarket.category,
+        momentum: selectedMarket.momentum,
+        change24h: selectedMarket.change24h,
+        volume: selectedMarket.volume,
+        hypeScore: selectedMarket.hypeScore,
+        direction: tradeDirection,
+        duration: selectedDuration,
+        amount: amountNum,
+      });
+
+      if (result.success) {
+        toast.success(
+          <div className="space-y-1">
+            <p className="font-semibold">{result.message}</p>
+            <p className="text-xs opacity-70">
+              Trade ID: {result.tradeId}
+            </p>
+            <p className="text-xs opacity-70">
+              Est. Return: ${result.details.estimatedReturn} USDC
+            </p>
+          </div>,
+          { duration: 5000 }
+        );
+        
+        // Reset state after successful trade
+        setIsMarketConfirmed(false);
+        setAmount("100");
+      }
+    } catch (error) {
+      console.error("Failed to place trade:", error);
+      toast.error("Failed to place trade. Please try again.");
+    }
   };
+
+  const isLoading = selectMarketMutation.isPending || placeTradeMutation.isPending;
+
+  // Determine button state and text
+  const getButtonState = () => {
+    if (!selectedMarket) {
+      return {
+        text: "SELECT A MARKET",
+        disabled: true,
+        className: "bg-white/10 text-white/30 cursor-not-allowed",
+      };
+    }
+    
+    if (isLoading) {
+      return {
+        text: "PROCESSING...",
+        disabled: true,
+        className: "bg-white/20 text-white/50 cursor-wait",
+      };
+    }
+    
+    if (!isMarketConfirmed) {
+      return {
+        text: "CONFIRM MARKET",
+        disabled: false,
+        className: "bg-[#00FFA3]/80 text-[#0B0E11] hover:bg-[#00FFA3] glow-green",
+      };
+    }
+    
+    return {
+      text: "TRADE MOMENTUM",
+      disabled: false,
+      className: tradeDirection === "long"
+        ? "bg-[#00FFA3] text-[#0B0E11] hover:bg-[#00CC82] glow-green"
+        : "bg-[#FF007A] text-white hover:bg-[#CC0062] glow-pink",
+    };
+  };
+
+  const buttonState = getButtonState();
 
   return (
     <aside className="w-80 shrink-0 space-y-4">
@@ -43,14 +175,26 @@ export default function TradeSidebar({ selectedMarket }: TradeSidebarProps) {
 
         {/* Selected Market */}
         {selectedMarket ? (
-          <div className="bg-white/5 rounded-lg p-3 mb-4">
+          <div className={`rounded-lg p-3 mb-4 transition-all ${
+            isMarketConfirmed 
+              ? "bg-[#00FFA3]/10 border border-[#00FFA3]/30" 
+              : "bg-white/5"
+          }`}>
             <div className="flex items-center justify-between mb-1">
-              <span className="font-mono text-xs text-white/50">SELECTED</span>
+              <span className="font-mono text-xs text-white/50">
+                {isMarketConfirmed ? "CONFIRMED" : "SELECTED"}
+              </span>
               <span className={`font-mono text-xs font-semibold ${selectedMarket.change24h >= 0 ? "text-[#00FFA3]" : "text-[#FF007A]"}`}>
                 {selectedMarket.change24h >= 0 ? "+" : ""}{selectedMarket.change24h.toFixed(1)}%
               </span>
             </div>
             <p className="font-display font-semibold text-white truncate">{selectedMarket.topic}</p>
+            {isMarketConfirmed && (
+              <div className="flex items-center gap-1 mt-2">
+                <CheckCircle className="w-3 h-3 text-[#00FFA3]" />
+                <span className="font-mono text-[10px] text-[#00FFA3]">Ready to trade</span>
+              </div>
+            )}
           </div>
         ) : (
           <div className="bg-white/5 rounded-lg p-3 mb-4 border border-dashed border-white/10">
@@ -142,18 +286,14 @@ export default function TradeSidebar({ selectedMarket }: TradeSidebarProps) {
         {/* Trade Button */}
         <button
           onClick={handleTrade}
-          disabled={!selectedMarket}
+          disabled={buttonState.disabled}
           className={`
-            w-full py-4 rounded-xl font-display font-bold text-base transition-all
-            ${selectedMarket
-              ? tradeDirection === "long"
-                ? "bg-[#00FFA3] text-[#0B0E11] hover:bg-[#00CC82] glow-green"
-                : "bg-[#FF007A] text-white hover:bg-[#CC0062] glow-pink"
-              : "bg-white/10 text-white/30 cursor-not-allowed"
-            }
+            w-full py-4 rounded-xl font-display font-bold text-base transition-all flex items-center justify-center gap-2
+            ${buttonState.className}
           `}
         >
-          {selectedMarket ? "TRADE MOMENTUM" : "SELECT A MARKET"}
+          {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+          {buttonState.text}
         </button>
 
         {/* Fee Notice */}

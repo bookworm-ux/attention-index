@@ -38,7 +38,7 @@ describe("API Key Validation", () => {
     expect([200, 404].includes(response.status) || response.ok).toBe(true);
   });
 
-  it("validates ELEVENLABS_API_KEY is set and functional", async () => {
+  it("validates ELEVENLABS_API_KEY is set and functional", { timeout: 15000 }, async () => {
     expect(ENV.elevenLabsApiKey).toBeTruthy();
     expect(ENV.elevenLabsApiKey.length).toBeGreaterThan(10);
     

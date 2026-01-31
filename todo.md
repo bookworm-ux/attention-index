@@ -16,3 +16,6 @@
 - [x] Volatility Alert: Pulsing red indicator when Anxiety > 70%
 - [x] Momentum Pump: Pulsing green indicator when Joy > 70%
 - [x] ElevenLabs Audio Narrative: Live Alpha Briefing button for top 3 markets summary
+
+## Bug Fixes
+- [x] Fix Select Market button - add backend POST endpoint and frontend handler
