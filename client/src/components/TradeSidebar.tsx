@@ -2,7 +2,7 @@
  * DESIGN: Neo-Brutalist Terminal
  * Right-hand trade panel with short-window contracts
  * Features: Trade Momentum button, Hype Score meter, contract durations
- * Now with backend integration for market selection and trading
+ * Now with AI Strategist for recommended duration
  */
 
 import { useState, useEffect } from "react";
@@ -10,6 +10,7 @@ import { TrendingUp, TrendingDown, Zap, AlertCircle, Loader2, CheckCircle } from
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { MarketData } from "./MarketCard";
+import Strategist from "./Strategist";
 
 interface TradeSidebarProps {
   selectedMarket: MarketData | null;
@@ -37,6 +38,16 @@ export default function TradeSidebar({ selectedMarket }: TradeSidebarProps) {
   useEffect(() => {
     setIsMarketConfirmed(false);
   }, [selectedMarket?.id]);
+
+  // Handle AI strategist recommendation
+  const handleStrategyRecommendation = (duration: "30M" | "1H" | "3H") => {
+    const durationMap: Record<string, DurationId> = {
+      "30M": "30m",
+      "1H": "1h",
+      "3H": "3h",
+    };
+    setSelectedDuration(durationMap[duration]);
+  };
 
   // Handle market selection (SELECT A MARKET button)
   const handleSelectMarket = async () => {
@@ -166,6 +177,19 @@ export default function TradeSidebar({ selectedMarket }: TradeSidebarProps) {
 
   return (
     <aside className="w-80 shrink-0 space-y-4">
+      {/* AI Strategist - Shows when market is selected */}
+      {selectedMarket && (
+        <Strategist
+          topic={selectedMarket.topic}
+          momentum={selectedMarket.momentum}
+          vibeData={selectedMarket.vibe ? {
+            joy: selectedMarket.vibe.joy,
+            anxiety: selectedMarket.vibe.anxiety,
+          } : undefined}
+          onRecommendation={handleStrategyRecommendation}
+        />
+      )}
+
       {/* Trade Panel */}
       <div className="glass-card rounded-xl p-4">
         <div className="flex items-center gap-2 mb-4">

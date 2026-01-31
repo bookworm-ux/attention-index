@@ -22,3 +22,10 @@
 - [x] Fix Radar Chart: Clamp JOY/ANX values at 100% and scale chart properly
 - [x] Fix Radar Chart label overlap: Add padding between labels and chart area
 - [x] Fix Radar Chart size: Maximize visual impact with better scaling and asymmetric padding
+
+## AI Pipeline Optimization
+- [x] Gemini: Batch signals (10 per API call) to stay within 15 RPM Free Tier limit
+- [x] Gemini: Combined Filter+Strategist output (core_event, hype_summary, recommended_duration, rationale)
+- [x] Alerts: Update thresholds - ANX>75% Volatility Trap, JOY>80% Hype Train
+- [x] UI: Add Strategist box with 'Scanning...' animation
+- [x] ElevenLabs: Optimize for low latency with Flash v2.5 model

@@ -3,6 +3,7 @@
  * Main dashboard page for Attention Index
  * Layout: Oracle Feed (left) | Ticker Wall (center) | Trade Sidebar (right)
  * Now with AI-powered vibe analysis from Hume AI
+ * Updated thresholds: ANX > 75% = Volatility Trap, JOY > 80% = Hype Train
  */
 
 import { useState, useMemo } from "react";
@@ -12,6 +13,7 @@ import OracleFeed from "@/components/OracleFeed";
 import TickerWall from "@/components/TickerWall";
 import TradeSidebar from "@/components/TradeSidebar";
 import { MarketData, VibeData } from "@/components/MarketCard";
+import { VOLATILITY_TRAP_THRESHOLD, HYPE_TRAIN_THRESHOLD } from "@/components/VibeAlert";
 
 // Generate realistic sparkline data
 const generateSparkline = (trend: "up" | "down" | "volatile"): number[] => {
@@ -30,6 +32,7 @@ const generateSparkline = (trend: "up" | "down" | "volatile"): number[] => {
 };
 
 // Generate vibe data based on market sentiment
+// Updated thresholds: ANX > 75% = Volatility Trap, JOY > 80% = Hype Train
 const generateVibeData = (change24h: number, hypeScore: number): VibeData => {
   // Base joy on positive change and hype
   const baseJoy = change24h >= 0 
@@ -44,15 +47,17 @@ const generateVibeData = (change24h: number, hypeScore: number): VibeData => {
   const joy = Math.round(baseJoy + (Math.random() - 0.5) * 10);
   const anxiety = Math.round(baseAnxiety + (Math.random() - 0.5) * 10);
   
-  // Determine alert type
-  let alertType: "volatility_alert" | "momentum_pump" | null = null;
+  // Determine alert type using updated thresholds
+  let alertType: "volatility_trap" | "hype_train" | null = null;
   let alertIntensity = 0;
   
-  if (anxiety > 70) {
-    alertType = "volatility_alert";
+  // Volatility Trap takes priority (risk warning) - ANX > 75%
+  if (anxiety > VOLATILITY_TRAP_THRESHOLD) {
+    alertType = "volatility_trap";
     alertIntensity = anxiety;
-  } else if (joy > 70) {
-    alertType = "momentum_pump";
+  } else if (joy > HYPE_TRAIN_THRESHOLD) {
+    // Hype Train for high joy - JOY > 80%
+    alertType = "hype_train";
     alertIntensity = joy;
   }
   

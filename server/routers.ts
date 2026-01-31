@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { analyzeSignal, generateMarketHypeSummary, type RawSignal } from "./services/gemini";
+import { analyzeSignal, analyzeBatchSignals, generateMarketStrategy, generateBriefingText, type RawSignal } from "./services/gemini";
 import { analyzeMarketVibe, analyzeTextVibe, generateVibeAlert } from "./services/hume";
 import { generateAlphaBriefing, type MarketBriefing } from "./services/elevenlabs";
 
@@ -106,7 +106,7 @@ export const appRouter = router({
 
   // AI Services Router
   ai: router({
-    // Gemini: Analyze a signal and extract structured data
+    // Gemini: Analyze a single signal with combined Filter+Strategist output
     analyzeSignal: publicProcedure
       .input(
         z.object({
@@ -128,8 +128,38 @@ export const appRouter = router({
         return analysis;
       }),
 
-    // Gemini: Generate market hype summary
-    generateMarketSummary: publicProcedure
+    // Gemini: Batch analyze signals (10 per API call for Free Tier efficiency)
+    analyzeBatchSignals: publicProcedure
+      .input(
+        z.object({
+          signals: z.array(
+            z.object({
+              id: z.string(),
+              source: z.enum(["twitter", "reddit", "hackernews", "news"]),
+              content: z.string(),
+              timestamp: z.number(),
+              engagement: z
+                .object({
+                  likes: z.number().optional(),
+                  retweets: z.number().optional(),
+                  comments: z.number().optional(),
+                })
+                .optional(),
+            })
+          ),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const results = await analyzeBatchSignals(input.signals as RawSignal[]);
+        // Convert Map to array of [id, analysis] pairs for JSON serialization
+        return Array.from(results.entries()).map(([id, analysis]) => ({
+          signalId: id,
+          ...analysis,
+        }));
+      }),
+
+    // Gemini: Generate market strategy with combined analysis
+    generateMarketStrategy: publicProcedure
       .input(
         z.object({
           topic: z.string(),
@@ -141,11 +171,39 @@ export const appRouter = router({
               timestamp: z.number(),
             })
           ),
+          currentMomentum: z.number(),
+          vibeData: z.object({
+            joy: z.number(),
+            anxiety: z.number(),
+          }).optional(),
         })
       )
       .mutation(async ({ input }) => {
-        const summary = await generateMarketHypeSummary(input.topic, input.signals as RawSignal[]);
-        return summary;
+        const strategy = await generateMarketStrategy(
+          input.topic,
+          input.signals as RawSignal[],
+          input.currentMomentum,
+          input.vibeData
+        );
+        return strategy;
+      }),
+
+    // Gemini: Generate briefing text for ElevenLabs
+    generateBriefingText: publicProcedure
+      .input(
+        z.object({
+          markets: z.array(
+            z.object({
+              topic: z.string(),
+              momentum: z.number(),
+              hype_summary: z.string(),
+            })
+          ),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const text = await generateBriefingText(input.markets);
+        return { text };
       }),
 
     // Hume: Analyze vibe/sentiment from text

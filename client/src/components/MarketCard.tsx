@@ -7,14 +7,14 @@
 import { TrendingUp, TrendingDown, Clock, Users } from "lucide-react";
 import VelocitySparkline from "./VelocitySparkline";
 import VibeRadarChart from "./VibeRadarChart";
-import { VibeAlertBadge } from "./VibeAlert";
+import { VibeAlertBadge, getVibeAlertType } from "./VibeAlert";
 
 export interface VibeData {
   joy: number;
   anxiety: number;
   anticipation?: number;
   surprise?: number;
-  alertType: "volatility_alert" | "momentum_pump" | null;
+  alertType: "volatility_trap" | "hype_train" | null;
   alertIntensity: number;
 }
 
@@ -31,6 +31,9 @@ export interface MarketData {
   timeRemaining?: string;
   hypeSummary?: string;
   vibe?: VibeData;
+  // Strategist fields from Gemini
+  recommendedDuration?: "30M" | "1H" | "3H";
+  strategyRationale?: string;
 }
 
 interface MarketCardProps {
@@ -42,6 +45,11 @@ interface MarketCardProps {
 export default function MarketCard({ market, index, onSelect }: MarketCardProps) {
   const isPositive = market.change24h >= 0;
   const trend = market.change24h > 2 ? "up" : market.change24h < -2 ? "down" : "neutral";
+
+  // Calculate alert from vibe data using updated thresholds
+  const vibeAlert = market.vibe 
+    ? getVibeAlertType(market.vibe.joy, market.vibe.anxiety)
+    : { type: null, intensity: 0 };
 
   return (
     <div
@@ -62,11 +70,11 @@ export default function MarketCard({ market, index, onSelect }: MarketCardProps)
                 {market.timeRemaining}
               </span>
             )}
-            {/* Vibe Alert Badge */}
-            {market.vibe?.alertType && (
+            {/* Vibe Alert Badge - using calculated alert with new thresholds */}
+            {vibeAlert.type && (
               <VibeAlertBadge 
-                type={market.vibe.alertType} 
-                intensity={market.vibe.alertIntensity} 
+                type={vibeAlert.type} 
+                intensity={vibeAlert.intensity} 
               />
             )}
           </div>
