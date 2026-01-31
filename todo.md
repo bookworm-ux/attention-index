@@ -21,3 +21,4 @@
 - [x] Fix Select Market button - add backend POST endpoint and frontend handler
 - [x] Fix Radar Chart: Clamp JOY/ANX values at 100% and scale chart properly
 - [x] Fix Radar Chart label overlap: Add padding between labels and chart area
+- [x] Fix Radar Chart size: Maximize visual impact with better scaling and asymmetric padding

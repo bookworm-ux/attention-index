@@ -4,7 +4,7 @@
  * as a compact radar chart visualization
  * 
  * Values are clamped to 0-100% range to ensure professional display
- * Labels have 15px padding from chart area with 20px layout padding
+ * Optimized for maximum visual impact with asymmetric padding
  */
 
 import { useMemo } from "react";
@@ -25,10 +25,12 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-// Configuration constants
-const LABEL_PADDING = 15; // Buffer zone between labels and chart data
-const LAYOUT_PADDING = 20; // Padding to prevent labels from being cut off
-const LABEL_FONT_SIZE = 7; // Reduced from 8px for better clarity on smaller screens
+// Configuration constants - optimized for maximum visual impact
+const PADDING_TOP = 10;    // Space for JOY label
+const PADDING_BOTTOM = 10; // Space for ANX label
+const PADDING_HORIZONTAL = 2; // Minimal horizontal padding to maximize width
+const LABEL_PADDING = 6;   // Small buffer between label and chart edge
+const LABEL_FONT_SIZE = 7; // Compact font for labels
 
 export default function VibeRadarChart({
   joy,
@@ -38,17 +40,22 @@ export default function VibeRadarChart({
   size = 80,
   className = "",
 }: VibeRadarChartProps) {
-  // Clamp all values to 0-100 range
+  // Clamp all values to 0-100 range (suggestedMax = 100)
   const clampedJoy = clamp(joy, 0, 100);
   const clampedAnxiety = clamp(anxiety, 0, 100);
   const clampedAnticipation = clamp(anticipation, 0, 100);
   const clampedSurprise = clamp(surprise, 0, 100);
 
-  // Calculate dimensions with layout padding
-  const innerSize = size - (LAYOUT_PADDING * 2);
-  const center = size / 2;
-  // Reduce chart radius to accommodate label padding (65% of available space)
-  const maxRadius = (innerSize / 2) * 0.65;
+  // Calculate chart area with asymmetric padding
+  const chartWidth = size - (PADDING_HORIZONTAL * 2);
+  const chartHeight = size - PADDING_TOP - PADDING_BOTTOM;
+  
+  // Center point accounting for asymmetric padding
+  const centerX = size / 2;
+  const centerY = PADDING_TOP + (chartHeight / 2);
+  
+  // Maximize radius - use 88% of available space (increased from 65%)
+  const maxRadius = Math.min(chartWidth, chartHeight) / 2 * 0.88;
 
   // Calculate points for the radar chart (4 axes)
   const points = useMemo(() => {
@@ -60,16 +67,16 @@ export default function VibeRadarChart({
     ];
 
     return emotions.map(({ value, angle }) => {
-      // Normalize to 0-1 range (already clamped, so max is 100)
+      // Normalize to 0-1 range (suggestedMax = 100, so divide by 100)
       const normalizedValue = value / 100;
       const radius = normalizedValue * maxRadius;
       const radians = (angle * Math.PI) / 180;
       return {
-        x: center + radius * Math.cos(radians),
-        y: center + radius * Math.sin(radians),
+        x: centerX + radius * Math.cos(radians),
+        y: centerY + radius * Math.sin(radians),
       };
     });
-  }, [clampedJoy, clampedAnxiety, clampedAnticipation, clampedSurprise, center, maxRadius]);
+  }, [clampedJoy, clampedAnxiety, clampedAnticipation, clampedSurprise, centerX, centerY, maxRadius]);
 
   // Create path for the filled area
   const pathD = useMemo(() => {
@@ -81,11 +88,8 @@ export default function VibeRadarChart({
   }, [points]);
 
   // Determine dominant color based on joy vs anxiety
-  const fillColor = clampedJoy > clampedAnxiety ? "rgba(0, 255, 163, 0.3)" : "rgba(255, 0, 122, 0.3)";
+  const fillColor = clampedJoy > clampedAnxiety ? "rgba(0, 255, 163, 0.35)" : "rgba(255, 0, 122, 0.35)";
   const strokeColor = clampedJoy > clampedAnxiety ? "#00FFA3" : "#FF007A";
-
-  // Calculate label positions with padding
-  const labelOffset = maxRadius + LABEL_PADDING;
 
   return (
     <div 
@@ -93,9 +97,8 @@ export default function VibeRadarChart({
       style={{ 
         width: size, 
         height: size,
-        padding: LAYOUT_PADDING,
-        boxSizing: 'content-box',
-        margin: -LAYOUT_PADDING, // Compensate for padding to maintain original footprint
+        minWidth: size,
+        minHeight: size,
       }}
     >
       <svg 
@@ -104,36 +107,36 @@ export default function VibeRadarChart({
         viewBox={`0 0 ${size} ${size}`}
         style={{ overflow: 'visible' }}
       >
-        {/* Background grid circles - 25%, 50%, 75%, 100% */}
-        {[0.25, 0.5, 0.75, 1].map((scale) => (
+        {/* Background grid circles - 50%, 100% only for cleaner look */}
+        {[0.5, 1].map((scale) => (
           <circle
             key={scale}
-            cx={center}
-            cy={center}
+            cx={centerX}
+            cy={centerY}
             r={maxRadius * scale}
             fill="none"
-            stroke="rgba(255,255,255,0.1)"
+            stroke="rgba(255,255,255,0.12)"
             strokeWidth="0.5"
           />
         ))}
 
-        {/* Axis lines */}
-        {[0, 90, 180, 270].map((angle) => {
-          const radians = ((angle - 90) * Math.PI) / 180;
-          const endX = center + maxRadius * Math.cos(radians);
-          const endY = center + maxRadius * Math.sin(radians);
-          return (
-            <line
-              key={angle}
-              x1={center}
-              y1={center}
-              x2={endX}
-              y2={endY}
-              stroke="rgba(255,255,255,0.15)"
-              strokeWidth="0.5"
-            />
-          );
-        })}
+        {/* Axis lines - vertical only for JOY/ANX emphasis */}
+        <line
+          x1={centerX}
+          y1={centerY - maxRadius}
+          x2={centerX}
+          y2={centerY + maxRadius}
+          stroke="rgba(255,255,255,0.2)"
+          strokeWidth="0.5"
+        />
+        <line
+          x1={centerX - maxRadius}
+          y1={centerY}
+          x2={centerX + maxRadius}
+          y2={centerY}
+          stroke="rgba(255,255,255,0.1)"
+          strokeWidth="0.5"
+        />
 
         {/* Filled radar area */}
         <path d={pathD} fill={fillColor} stroke={strokeColor} strokeWidth="1.5" />
@@ -144,36 +147,35 @@ export default function VibeRadarChart({
             key={i}
             cx={point.x}
             cy={point.y}
-            r="2"
+            r="2.5"
             fill={strokeColor}
           />
         ))}
 
-        {/* Labels rendered inside SVG for precise positioning */}
-        {/* JOY label - top */}
+        {/* JOY label - positioned at top with small padding */}
         <text
-          x={center}
-          y={center - labelOffset}
+          x={centerX}
+          y={centerY - maxRadius - LABEL_PADDING}
           textAnchor="middle"
-          dominantBaseline="middle"
+          dominantBaseline="auto"
           fill="#00FFA3"
           fontSize={LABEL_FONT_SIZE}
-          fontFamily="monospace"
-          fontWeight="500"
+          fontFamily="ui-monospace, monospace"
+          fontWeight="600"
         >
           JOY
         </text>
         
-        {/* ANX label - bottom */}
+        {/* ANX label - positioned at bottom with small padding */}
         <text
-          x={center}
-          y={center + labelOffset}
+          x={centerX}
+          y={centerY + maxRadius + LABEL_PADDING}
           textAnchor="middle"
-          dominantBaseline="middle"
+          dominantBaseline="hanging"
           fill="#FF007A"
           fontSize={LABEL_FONT_SIZE}
-          fontFamily="monospace"
-          fontWeight="500"
+          fontFamily="ui-monospace, monospace"
+          fontWeight="600"
         >
           ANX
         </text>
