@@ -4,6 +4,7 @@
  * as a compact radar chart visualization
  * 
  * Values are clamped to 0-100% range to ensure professional display
+ * Labels have 15px padding from chart area with 20px layout padding
  */
 
 import { useMemo } from "react";
@@ -24,6 +25,11 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
+// Configuration constants
+const LABEL_PADDING = 15; // Buffer zone between labels and chart data
+const LAYOUT_PADDING = 20; // Padding to prevent labels from being cut off
+const LABEL_FONT_SIZE = 7; // Reduced from 8px for better clarity on smaller screens
+
 export default function VibeRadarChart({
   joy,
   anxiety,
@@ -38,9 +44,11 @@ export default function VibeRadarChart({
   const clampedAnticipation = clamp(anticipation, 0, 100);
   const clampedSurprise = clamp(surprise, 0, 100);
 
+  // Calculate dimensions with layout padding
+  const innerSize = size - (LAYOUT_PADDING * 2);
   const center = size / 2;
-  // Use 80% of the radius to leave room for labels and prevent overflow
-  const maxRadius = (size / 2) * 0.75;
+  // Reduce chart radius to accommodate label padding (65% of available space)
+  const maxRadius = (innerSize / 2) * 0.65;
 
   // Calculate points for the radar chart (4 axes)
   const points = useMemo(() => {
@@ -76,8 +84,20 @@ export default function VibeRadarChart({
   const fillColor = clampedJoy > clampedAnxiety ? "rgba(0, 255, 163, 0.3)" : "rgba(255, 0, 122, 0.3)";
   const strokeColor = clampedJoy > clampedAnxiety ? "#00FFA3" : "#FF007A";
 
+  // Calculate label positions with padding
+  const labelOffset = maxRadius + LABEL_PADDING;
+
   return (
-    <div className={`relative ${className}`} style={{ width: size, height: size }}>
+    <div 
+      className={`relative ${className}`} 
+      style={{ 
+        width: size, 
+        height: size,
+        padding: LAYOUT_PADDING,
+        boxSizing: 'content-box',
+        margin: -LAYOUT_PADDING, // Compensate for padding to maintain original footprint
+      }}
+    >
       <svg 
         width={size} 
         height={size} 
@@ -128,21 +148,36 @@ export default function VibeRadarChart({
             fill={strokeColor}
           />
         ))}
-      </svg>
 
-      {/* Labels - positioned outside the chart */}
-      <div
-        className="absolute font-mono text-[8px] text-[#00FFA3]"
-        style={{ top: -2, left: "50%", transform: "translateX(-50%)" }}
-      >
-        JOY
-      </div>
-      <div
-        className="absolute font-mono text-[8px] text-[#FF007A]"
-        style={{ bottom: -2, left: "50%", transform: "translateX(-50%)" }}
-      >
-        ANX
-      </div>
+        {/* Labels rendered inside SVG for precise positioning */}
+        {/* JOY label - top */}
+        <text
+          x={center}
+          y={center - labelOffset}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="#00FFA3"
+          fontSize={LABEL_FONT_SIZE}
+          fontFamily="monospace"
+          fontWeight="500"
+        >
+          JOY
+        </text>
+        
+        {/* ANX label - bottom */}
+        <text
+          x={center}
+          y={center + labelOffset}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="#FF007A"
+          fontSize={LABEL_FONT_SIZE}
+          fontFamily="monospace"
+          fontWeight="500"
+        >
+          ANX
+        </text>
+      </svg>
     </div>
   );
 }
