@@ -1,12 +1,22 @@
 /*
  * DESIGN: Neo-Brutalist Terminal
  * Glassmorphic market card with velocity sparkline
- * Shows topic, momentum %, velocity chart, and trading volume
+ * Shows topic, momentum %, velocity chart, trading volume, and AI vibe analysis
  */
 
 import { TrendingUp, TrendingDown, Clock, Users } from "lucide-react";
 import VelocitySparkline from "./VelocitySparkline";
-import { toast } from "sonner";
+import VibeRadarChart from "./VibeRadarChart";
+import { VibeAlertBadge } from "./VibeAlert";
+
+export interface VibeData {
+  joy: number;
+  anxiety: number;
+  anticipation?: number;
+  surprise?: number;
+  alertType: "volatility_alert" | "momentum_pump" | null;
+  alertIntensity: number;
+}
 
 export interface MarketData {
   id: string;
@@ -19,6 +29,8 @@ export interface MarketData {
   sparklineData: number[];
   hypeScore: number;
   timeRemaining?: string;
+  hypeSummary?: string;
+  vibe?: VibeData;
 }
 
 interface MarketCardProps {
@@ -40,7 +52,7 @@ export default function MarketCard({ market, index, onSelect }: MarketCardProps)
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider bg-white/5 text-white/50">
               {market.category}
             </span>
@@ -49,6 +61,13 @@ export default function MarketCard({ market, index, onSelect }: MarketCardProps)
                 <Clock className="w-3 h-3" />
                 {market.timeRemaining}
               </span>
+            )}
+            {/* Vibe Alert Badge */}
+            {market.vibe?.alertType && (
+              <VibeAlertBadge 
+                type={market.vibe.alertType} 
+                intensity={market.vibe.alertIntensity} 
+              />
             )}
           </div>
           <h3 className="font-display font-bold text-base text-white truncate pr-2">
@@ -69,15 +88,36 @@ export default function MarketCard({ market, index, onSelect }: MarketCardProps)
         </div>
       </div>
 
-      {/* Sparkline */}
-      <div className="mb-3">
-        <VelocitySparkline 
-          data={market.sparklineData} 
-          trend={trend}
-          width={200}
-          height={48}
-          className="w-full"
-        />
+      {/* Main Content: Sparkline + Vibe Radar */}
+      <div className="flex gap-3 mb-3">
+        {/* Sparkline */}
+        <div className="flex-1">
+          <VelocitySparkline 
+            data={market.sparklineData} 
+            trend={trend}
+            width={160}
+            height={48}
+            className="w-full"
+          />
+        </div>
+        
+        {/* Vibe Radar Chart */}
+        {market.vibe && (
+          <div className="flex flex-col items-center">
+            <VibeRadarChart
+              joy={market.vibe.joy}
+              anxiety={market.vibe.anxiety}
+              anticipation={market.vibe.anticipation}
+              surprise={market.vibe.surprise}
+              size={56}
+            />
+            <div className="flex gap-2 mt-1 text-[8px] font-mono">
+              <span className="text-[#00FFA3]">{market.vibe.joy}%</span>
+              <span className="text-white/30">/</span>
+              <span className="text-[#FF007A]">{market.vibe.anxiety}%</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Stats Row */}

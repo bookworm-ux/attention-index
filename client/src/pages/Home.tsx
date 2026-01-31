@@ -2,14 +2,16 @@
  * DESIGN: Neo-Brutalist Terminal
  * Main dashboard page for Attention Index
  * Layout: Oracle Feed (left) | Ticker Wall (center) | Trade Sidebar (right)
+ * Now with AI-powered vibe analysis from Hume AI
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 import Navigation from "@/components/Navigation";
 import OracleFeed from "@/components/OracleFeed";
 import TickerWall from "@/components/TickerWall";
 import TradeSidebar from "@/components/TradeSidebar";
-import { MarketData } from "@/components/MarketCard";
+import { MarketData, VibeData } from "@/components/MarketCard";
 
 // Generate realistic sparkline data
 const generateSparkline = (trend: "up" | "down" | "volatile"): number[] => {
@@ -27,7 +29,44 @@ const generateSparkline = (trend: "up" | "down" | "volatile"): number[] => {
   return points;
 };
 
-// Mock market data
+// Generate vibe data based on market sentiment
+const generateVibeData = (change24h: number, hypeScore: number): VibeData => {
+  // Base joy on positive change and hype
+  const baseJoy = change24h >= 0 
+    ? Math.min(100, 40 + change24h * 1.2 + hypeScore * 0.3)
+    : Math.max(10, 30 - Math.abs(change24h) * 0.5);
+  
+  // Base anxiety on volatility and negative change
+  const baseAnxiety = change24h < 0
+    ? Math.min(100, 30 + Math.abs(change24h) * 2)
+    : Math.max(10, 20 + Math.abs(change24h) * 0.3);
+  
+  const joy = Math.round(baseJoy + (Math.random() - 0.5) * 10);
+  const anxiety = Math.round(baseAnxiety + (Math.random() - 0.5) * 10);
+  
+  // Determine alert type
+  let alertType: "volatility_alert" | "momentum_pump" | null = null;
+  let alertIntensity = 0;
+  
+  if (anxiety > 70) {
+    alertType = "volatility_alert";
+    alertIntensity = anxiety;
+  } else if (joy > 70) {
+    alertType = "momentum_pump";
+    alertIntensity = joy;
+  }
+  
+  return {
+    joy,
+    anxiety,
+    anticipation: Math.round((joy + anxiety) / 2 + (Math.random() - 0.5) * 20),
+    surprise: Math.round(30 + Math.random() * 40),
+    alertType,
+    alertIntensity,
+  };
+};
+
+// Mock market data with vibe analysis
 const mockMarkets: MarketData[] = [
   {
     id: "1",
@@ -40,6 +79,8 @@ const mockMarkets: MarketData[] = [
     sparklineData: generateSparkline("up"),
     hypeScore: 92,
     timeRemaining: "2h 34m",
+    hypeSummary: "Marty Supreme is dominating social feeds with viral content and massive engagement.",
+    vibe: generateVibeData(23.4, 92),
   },
   {
     id: "2",
@@ -52,6 +93,8 @@ const mockMarkets: MarketData[] = [
     sparklineData: generateSparkline("up"),
     hypeScore: 98,
     timeRemaining: "1h 12m",
+    hypeSummary: "OpenAI IPO speculation reaches fever pitch as investors scramble for allocation.",
+    vibe: generateVibeData(45.2, 98),
   },
   {
     id: "3",
@@ -64,6 +107,8 @@ const mockMarkets: MarketData[] = [
     sparklineData: generateSparkline("up"),
     hypeScore: 76,
     timeRemaining: "45m",
+    hypeSummary: "Developer community buzzing about shadcn/ui's latest release with new components.",
+    vibe: generateVibeData(12.8, 76),
   },
   {
     id: "4",
@@ -76,6 +121,8 @@ const mockMarkets: MarketData[] = [
     sparklineData: generateSparkline("down"),
     hypeScore: 58,
     timeRemaining: "3h 00m",
+    hypeSummary: "Bitcoin ETF outflows continue as institutional investors take profits amid uncertainty.",
+    vibe: generateVibeData(-8.3, 58),
   },
   {
     id: "5",
@@ -88,6 +135,8 @@ const mockMarkets: MarketData[] = [
     sparklineData: generateSparkline("up"),
     hypeScore: 85,
     timeRemaining: "1h 45m",
+    hypeSummary: "Solana memecoins surge as retail traders pile into high-risk, high-reward plays.",
+    vibe: generateVibeData(34.7, 85),
   },
   {
     id: "6",
@@ -100,6 +149,8 @@ const mockMarkets: MarketData[] = [
     sparklineData: generateSparkline("down"),
     hypeScore: 38,
     timeRemaining: "2h 15m",
+    hypeSummary: "Vision Pro reviews turn negative as users report comfort issues and limited app ecosystem.",
+    vibe: generateVibeData(-15.2, 38),
   },
   {
     id: "7",
@@ -112,6 +163,8 @@ const mockMarkets: MarketData[] = [
     sparklineData: generateSparkline("volatile"),
     hypeScore: 81,
     timeRemaining: "30m",
+    hypeSummary: "Taylor Swift Eras Tour continues to break records and dominate cultural conversation.",
+    vibe: generateVibeData(8.9, 81),
   },
   {
     id: "8",
@@ -124,6 +177,8 @@ const mockMarkets: MarketData[] = [
     sparklineData: generateSparkline("volatile"),
     hypeScore: 62,
     timeRemaining: "4h 30m",
+    hypeSummary: "EU AI Act vote approaches with mixed signals from industry and regulators.",
+    vibe: generateVibeData(5.4, 62),
   },
   {
     id: "9",
@@ -136,6 +191,8 @@ const mockMarkets: MarketData[] = [
     sparklineData: generateSparkline("up"),
     hypeScore: 95,
     timeRemaining: "15m",
+    hypeSummary: "Rumored NVIDIA earnings beat sends momentum soaring as traders position for announcement.",
+    vibe: generateVibeData(67.3, 95),
   },
   {
     id: "10",
@@ -148,12 +205,28 @@ const mockMarkets: MarketData[] = [
     sparklineData: generateSparkline("up"),
     hypeScore: 89,
     timeRemaining: "1h 00m",
+    hypeSummary: "Elon Musk's latest Twitter activity sparks market moves and meme coin rallies.",
+    vibe: generateVibeData(41.2, 89),
   },
 ];
 
 export default function Home() {
+  const { user, loading, isAuthenticated } = useAuth();
   const [activeCategory, setActiveCategory] = useState("trending");
   const [selectedMarket, setSelectedMarket] = useState<MarketData | null>(null);
+
+  // Prepare top markets for audio briefing
+  const topMarketsForBriefing = useMemo(() => {
+    return mockMarkets
+      .sort((a, b) => b.momentum - a.momentum)
+      .slice(0, 3)
+      .map((m) => ({
+        topic: m.topic,
+        momentum: m.momentum,
+        change24h: m.change24h,
+        hypeSummary: m.hypeSummary || `${m.topic} is trending with ${m.momentum}% momentum.`,
+      }));
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0B0E11] relative">
@@ -180,10 +253,11 @@ export default function Home() {
         }}
       />
 
-      {/* Navigation */}
+      {/* Navigation with Alpha Briefing */}
       <Navigation 
         activeCategory={activeCategory} 
-        onCategoryChange={setActiveCategory} 
+        onCategoryChange={setActiveCategory}
+        topMarkets={topMarketsForBriefing}
       />
 
       {/* Main Content */}
@@ -198,7 +272,7 @@ export default function Home() {
                 </h1>
                 <p className="font-mono text-sm text-white/50 max-w-xl">
                   Trade momentum on viral topics, trending repos, and cultural moments. 
-                  Short-window contracts powered by real-time social signals.
+                  Short-window contracts powered by real-time social signals and AI analysis.
                 </p>
               </div>
               <div className="hidden lg:block">

@@ -2,11 +2,12 @@
  * DESIGN: Neo-Brutalist Terminal
  * Navigation bar with brutalist typography and glassmorphic background
  * Categories: Trending, Alpha, Crypto, Tech, Culture
+ * Now includes Live Alpha Briefing button powered by ElevenLabs
  */
 
-import { useState } from "react";
 import { Activity, Flame, Zap, Code, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import AlphaBriefingButton from "./AlphaBriefingButton";
 
 const categories = [
   { id: "trending", label: "TRENDING", icon: Flame },
@@ -16,12 +17,20 @@ const categories = [
   { id: "culture", label: "CULTURE", icon: Sparkles },
 ];
 
+interface MarketBriefing {
+  topic: string;
+  momentum: number;
+  change24h: number;
+  hypeSummary: string;
+}
+
 interface NavigationProps {
   activeCategory: string;
   onCategoryChange: (category: string) => void;
+  topMarkets?: MarketBriefing[];
 }
 
-export default function Navigation({ activeCategory, onCategoryChange }: NavigationProps) {
+export default function Navigation({ activeCategory, onCategoryChange, topMarkets = [] }: NavigationProps) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
       <div className="glass-card border-b border-white/5">
@@ -66,6 +75,11 @@ export default function Navigation({ activeCategory, onCategoryChange }: Navigat
 
             {/* Right side actions */}
             <div className="flex items-center gap-3">
+              {/* Alpha Briefing Button */}
+              <div className="hidden lg:block">
+                <AlphaBriefingButton markets={topMarkets} />
+              </div>
+              
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#00FFA3]/10 border border-[#00FFA3]/20">
                 <span className="w-2 h-2 rounded-full bg-[#00FFA3] pulse-indicator" />
                 <span className="font-mono text-xs text-[#00FFA3]">LIVE</span>
