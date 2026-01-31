@@ -2,17 +2,26 @@
  * VibeRadarChart Component
  * Displays Joy (Excitement) and Anxiety (Risk) scores from Hume AI analysis
  * as a compact radar chart visualization
+ * 
+ * Values are clamped to 0-100% range to ensure professional display
  */
 
 import { useMemo } from "react";
 
 interface VibeRadarChartProps {
-  joy: number; // 0-100
-  anxiety: number; // 0-100
-  anticipation?: number; // 0-100
-  surprise?: number; // 0-100
+  joy: number; // 0-100 (will be clamped)
+  anxiety: number; // 0-100 (will be clamped)
+  anticipation?: number; // 0-100 (will be clamped)
+  surprise?: number; // 0-100 (will be clamped)
   size?: number;
   className?: string;
+}
+
+/**
+ * Clamp a value between min and max
+ */
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
 }
 
 export default function VibeRadarChart({
@@ -23,19 +32,27 @@ export default function VibeRadarChart({
   size = 80,
   className = "",
 }: VibeRadarChartProps) {
+  // Clamp all values to 0-100 range
+  const clampedJoy = clamp(joy, 0, 100);
+  const clampedAnxiety = clamp(anxiety, 0, 100);
+  const clampedAnticipation = clamp(anticipation, 0, 100);
+  const clampedSurprise = clamp(surprise, 0, 100);
+
   const center = size / 2;
-  const maxRadius = (size / 2) * 0.85;
+  // Use 80% of the radius to leave room for labels and prevent overflow
+  const maxRadius = (size / 2) * 0.75;
 
   // Calculate points for the radar chart (4 axes)
   const points = useMemo(() => {
     const emotions = [
-      { value: joy, angle: -90 }, // Top - Joy
-      { value: anticipation, angle: 0 }, // Right - Anticipation
-      { value: anxiety, angle: 90 }, // Bottom - Anxiety
-      { value: surprise, angle: 180 }, // Left - Surprise
+      { value: clampedJoy, angle: -90 }, // Top - Joy
+      { value: clampedAnticipation, angle: 0 }, // Right - Anticipation
+      { value: clampedAnxiety, angle: 90 }, // Bottom - Anxiety
+      { value: clampedSurprise, angle: 180 }, // Left - Surprise
     ];
 
     return emotions.map(({ value, angle }) => {
+      // Normalize to 0-1 range (already clamped, so max is 100)
       const normalizedValue = value / 100;
       const radius = normalizedValue * maxRadius;
       const radians = (angle * Math.PI) / 180;
@@ -44,7 +61,7 @@ export default function VibeRadarChart({
         y: center + radius * Math.sin(radians),
       };
     });
-  }, [joy, anxiety, anticipation, surprise, center, maxRadius]);
+  }, [clampedJoy, clampedAnxiety, clampedAnticipation, clampedSurprise, center, maxRadius]);
 
   // Create path for the filled area
   const pathD = useMemo(() => {
@@ -56,13 +73,18 @@ export default function VibeRadarChart({
   }, [points]);
 
   // Determine dominant color based on joy vs anxiety
-  const fillColor = joy > anxiety ? "rgba(0, 255, 163, 0.3)" : "rgba(255, 0, 122, 0.3)";
-  const strokeColor = joy > anxiety ? "#00FFA3" : "#FF007A";
+  const fillColor = clampedJoy > clampedAnxiety ? "rgba(0, 255, 163, 0.3)" : "rgba(255, 0, 122, 0.3)";
+  const strokeColor = clampedJoy > clampedAnxiety ? "#00FFA3" : "#FF007A";
 
   return (
     <div className={`relative ${className}`} style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        {/* Background grid circles */}
+      <svg 
+        width={size} 
+        height={size} 
+        viewBox={`0 0 ${size} ${size}`}
+        style={{ overflow: 'visible' }}
+      >
+        {/* Background grid circles - 25%, 50%, 75%, 100% */}
         {[0.25, 0.5, 0.75, 1].map((scale) => (
           <circle
             key={scale}
@@ -108,16 +130,16 @@ export default function VibeRadarChart({
         ))}
       </svg>
 
-      {/* Labels */}
+      {/* Labels - positioned outside the chart */}
       <div
         className="absolute font-mono text-[8px] text-[#00FFA3]"
-        style={{ top: 0, left: "50%", transform: "translateX(-50%)" }}
+        style={{ top: -2, left: "50%", transform: "translateX(-50%)" }}
       >
         JOY
       </div>
       <div
         className="absolute font-mono text-[8px] text-[#FF007A]"
-        style={{ bottom: 0, left: "50%", transform: "translateX(-50%)" }}
+        style={{ bottom: -2, left: "50%", transform: "translateX(-50%)" }}
       >
         ANX
       </div>

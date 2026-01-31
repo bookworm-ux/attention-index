@@ -112,9 +112,9 @@ export default function MarketCard({ market, index, onSelect }: MarketCardProps)
               size={56}
             />
             <div className="flex gap-2 mt-1 text-[8px] font-mono">
-              <span className="text-[#00FFA3]">{market.vibe.joy}%</span>
+              <span className="text-[#00FFA3]">{Math.min(Math.round(market.vibe.joy), 100)}%</span>
               <span className="text-white/30">/</span>
-              <span className="text-[#FF007A]">{market.vibe.anxiety}%</span>
+              <span className="text-[#FF007A]">{Math.min(Math.round(market.vibe.anxiety), 100)}%</span>
             </div>
           </div>
         )}
