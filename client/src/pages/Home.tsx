@@ -229,6 +229,8 @@ export default function Home() {
         topic: m.topic,
         momentum: m.momentum,
         change24h: m.change24h,
+        volume: m.volume,
+        hypeScore: m.hypeScore,
         hypeSummary: m.hypeSummary || `${m.topic} is trending with ${m.momentum}% momentum.`,
       }));
   }, []);

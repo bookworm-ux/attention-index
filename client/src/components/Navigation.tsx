@@ -2,12 +2,12 @@
  * DESIGN: Neo-Brutalist Terminal
  * Navigation bar with brutalist typography and glassmorphic background
  * Categories: Trending, Alpha, Crypto, Tech, Culture
- * Now includes Live Alpha Briefing button powered by ElevenLabs
+ * Now includes Live Hype Briefing button powered by Gemini + ElevenLabs
  */
 
 import { Activity, Flame, Zap, Code, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import AlphaBriefingButton from "./AlphaBriefingButton";
+import ListenToAlphaButton from "./ListenToAlphaButton";
 
 const categories = [
   { id: "trending", label: "TRENDING", icon: Flame },
@@ -17,17 +17,19 @@ const categories = [
   { id: "culture", label: "CULTURE", icon: Sparkles },
 ];
 
-interface MarketBriefing {
+interface MarketData {
   topic: string;
   momentum: number;
   change24h: number;
-  hypeSummary: string;
+  volume: string;
+  hypeScore: number;
+  hypeSummary?: string;
 }
 
 interface NavigationProps {
   activeCategory: string;
   onCategoryChange: (category: string) => void;
-  topMarkets?: MarketBriefing[];
+  topMarkets?: MarketData[];
 }
 
 export default function Navigation({ activeCategory, onCategoryChange, topMarkets = [] }: NavigationProps) {
@@ -75,9 +77,9 @@ export default function Navigation({ activeCategory, onCategoryChange, topMarket
 
             {/* Right side actions */}
             <div className="flex items-center gap-3">
-              {/* Alpha Briefing Button */}
+              {/* Live Hype Briefing Button */}
               <div className="hidden lg:block">
-                <AlphaBriefingButton markets={topMarkets} />
+                <ListenToAlphaButton markets={topMarkets} />
               </div>
               
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#00FFA3]/10 border border-[#00FFA3]/20">

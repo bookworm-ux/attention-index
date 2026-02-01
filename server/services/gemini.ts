@@ -4,6 +4,7 @@
  * - Batches up to 10 signals per API call
  * - Combined Filter + Strategist output
  * - Rate limiting with request queue
+ * - Wall Street-style Live Hype Briefing generation
  */
 
 import { ENV } from "../_core/env";
@@ -30,6 +31,16 @@ export interface RawSignal {
     retweets?: number;
     comments?: number;
   };
+}
+
+// Market data for briefing generation
+export interface MarketBriefingData {
+  topic: string;
+  momentum: number;
+  change24h: number;
+  volume: string;
+  hypeScore: number;
+  hypeSummary?: string;
 }
 
 // Rate limiting: 15 RPM = 1 request per 4 seconds
@@ -99,6 +110,32 @@ To maintain 90% accuracy:
 - Be conservative with confidence scores
 
 Respond with a JSON array, one object per signal in the same order as input.`;
+
+// Wall Street-style briefing prompt
+const WALL_STREET_BRIEFING_PROMPT = `You are a senior Wall Street market analyst delivering a live audio briefing for "Attention Index" - a platform that trades momentum on viral topics and cultural moments.
+
+Write a punchy, urgent, 45-second market update script (approximately 120-140 words) in the style of CNBC's Fast Money or Bloomberg's Market Wrap.
+
+TONE REQUIREMENTS:
+- Professional but energetic - like a trader who just spotted alpha
+- Data-driven with specific numbers
+- Urgent and time-sensitive language
+- Use financial jargon naturally (momentum, velocity, positioning, flows)
+- Short, punchy sentences for impact
+- Create FOMO without being unprofessional
+
+STRUCTURE:
+1. HOOK (5 sec): Attention-grabbing opening about the hottest market
+2. TOP 3 BREAKDOWN (30 sec): Cover each market with momentum %, direction, and key insight
+3. ALPHA CALL (8 sec): One specific actionable insight or pattern you're seeing
+4. CLOSE (2 sec): Sign-off with urgency
+
+STYLE EXAMPLES:
+- "Attention is SURGING on OpenAI IPO Hype - up 45% in the last hour alone."
+- "Smart money is rotating into tech narratives. We're seeing massive velocity spikes."
+- "If you're not positioned in this move, you're leaving alpha on the table."
+
+Output ONLY the script text, no JSON or formatting.`;
 
 // Batch analyze up to 10 signals in a single API call
 export async function analyzeBatchSignals(signals: RawSignal[]): Promise<Map<string, SignalAnalysis>> {
@@ -274,48 +311,132 @@ JSON response only.`;
   }
 }
 
-// Generate briefing text for ElevenLabs
-export async function generateBriefingText(markets: Array<{ topic: string; momentum: number; hype_summary: string }>): Promise<string> {
-  const marketsText = markets.slice(0, 3).map((m, i) => 
-    `${i + 1}. ${m.topic}: ${m.momentum}% momentum. ${m.hype_summary}`
-  ).join("\n");
+/**
+ * Generate Wall Street-style Live Hype Briefing
+ * Creates a punchy, 45-second market update script for voice synthesis
+ */
+export async function generateLiveHypeBriefing(markets: MarketBriefingData[]): Promise<{
+  script: string;
+  wordCount: number;
+  estimatedDuration: number;
+}> {
+  const topMarkets = markets.slice(0, 3);
+  
+  const marketsData = topMarkets.map((m, i) => 
+    `MARKET ${i + 1}: ${m.topic}
+- Momentum: ${m.momentum}%
+- 24h Change: ${m.change24h >= 0 ? '+' : ''}${m.change24h.toFixed(1)}%
+- Volume: ${m.volume}
+- Hype Score: ${m.hypeScore}/100
+${m.hypeSummary ? `- Context: ${m.hypeSummary}` : ''}`
+  ).join('\n\n');
 
-  const prompt = `Write a 30-second audio briefing script for a trading terminal.
-Cover these top 3 markets:
+  const prompt = `${WALL_STREET_BRIEFING_PROMPT}
 
-${marketsText}
+TOP 3 TRENDING MARKETS RIGHT NOW:
 
-Requirements:
-- Professional, concise financial news style
-- Under 100 words total
-- Start with "Alpha Briefing" intro
-- End with a quick risk reminder
+${marketsData}
 
-Output the script text only, no JSON.`;
+Write the 45-second briefing script now:`;
 
   try {
-    return await queueRequest(async () => {
+    const script = await queueRequest(async () => {
       const response = await fetch(`${GEMINI_API_URL}?key=${ENV.geminiApiKey}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 0.5,
-            maxOutputTokens: 256,
+            temperature: 0.7, // Higher for more creative/punchy output
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 400,
           },
         }),
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[Gemini] Briefing API error:", errorText);
         throw new Error(`Gemini API error: ${response.status}`);
       }
 
       const data = await response.json();
-      return data.candidates?.[0]?.content?.parts?.[0]?.text || "Alpha Briefing unavailable.";
+      const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!textContent) {
+        throw new Error("No content in Gemini briefing response");
+      }
+
+      return textContent.trim();
     });
+
+    const wordCount = script.split(/\s+/).length;
+    // Professional narration: ~150 words per minute
+    const estimatedDuration = Math.round((wordCount / 150) * 60);
+
+    console.log(`[Gemini] Generated briefing: ${wordCount} words, ~${estimatedDuration}s`);
+
+    return {
+      script,
+      wordCount,
+      estimatedDuration,
+    };
   } catch (error) {
-    console.error("[Gemini] Briefing generation error:", error);
-    return "Alpha Briefing: Markets are active. Top momentum in tech and culture sectors. Trade responsibly.";
+    console.error("[Gemini] Live briefing generation error:", error);
+    
+    // Fallback script using actual market data
+    const fallbackScript = generateFallbackBriefing(topMarkets);
+    const wordCount = fallbackScript.split(/\s+/).length;
+    
+    return {
+      script: fallbackScript,
+      wordCount,
+      estimatedDuration: Math.round((wordCount / 150) * 60),
+    };
   }
+}
+
+/**
+ * Generate a fallback briefing when API is unavailable
+ */
+function generateFallbackBriefing(markets: MarketBriefingData[]): string {
+  if (markets.length === 0) {
+    return "This is your Attention Index live briefing. Markets are currently being analyzed. Check back shortly for the latest momentum plays. Trade smart.";
+  }
+
+  const top = markets[0];
+  const second = markets[1];
+  const third = markets[2];
+
+  let script = `This is your Attention Index live briefing. `;
+  
+  script += `Leading the momentum board right now: ${top.topic}, surging ${top.change24h >= 0 ? 'up' : 'down'} ${Math.abs(top.change24h).toFixed(0)} percent with a hype score of ${top.hypeScore}. `;
+  
+  if (second) {
+    script += `In second position, ${second.topic} showing ${second.momentum} percent momentum. `;
+  }
+  
+  if (third) {
+    script += `And rounding out the top three, ${third.topic} at ${third.momentum} percent. `;
+  }
+  
+  script += `That's your alpha update. Position accordingly and trade smart.`;
+  
+  return script;
+}
+
+// Legacy briefing function - now uses Wall Street style
+export async function generateBriefingText(markets: Array<{ topic: string; momentum: number; hype_summary: string }>): Promise<string> {
+  const briefingData: MarketBriefingData[] = markets.map(m => ({
+    topic: m.topic,
+    momentum: m.momentum,
+    change24h: 0,
+    volume: "N/A",
+    hypeScore: m.momentum,
+    hypeSummary: m.hype_summary,
+  }));
+  
+  const result = await generateLiveHypeBriefing(briefingData);
+  return result.script;
 }

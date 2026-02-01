@@ -29,3 +29,9 @@
 - [x] Alerts: Update thresholds - ANX>75% Volatility Trap, JOY>80% Hype Train
 - [x] UI: Add Strategist box with 'Scanning...' animation
 - [x] ElevenLabs: Optimize for low latency with Flash v2.5 model
+
+## Live Hype Briefing Feature
+- [x] Backend: Gemini 1.5 Flash function for Wall Street-style 45-second market briefing
+- [x] ElevenLabs: Professional news anchor voice (Bill or Charlotte) with Flash v2.5
+- [x] UI: Listen to Alpha button with volume icon in header
+- [x] UI: Audio waveform animation during playback

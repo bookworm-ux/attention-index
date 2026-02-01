@@ -3,9 +3,9 @@ import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { analyzeSignal, analyzeBatchSignals, generateMarketStrategy, generateBriefingText, type RawSignal } from "./services/gemini";
+import { analyzeSignal, analyzeBatchSignals, generateMarketStrategy, generateBriefingText, generateLiveHypeBriefing, type RawSignal, type MarketBriefingData } from "./services/gemini";
 import { analyzeMarketVibe, analyzeTextVibe, generateVibeAlert } from "./services/hume";
-import { generateAlphaBriefing, type MarketBriefing } from "./services/elevenlabs";
+import { generateAlphaBriefing, generateLiveHypeBriefing as generateAudioBriefing, type MarketBriefing, type VoiceOption, getVoiceOptions } from "./services/elevenlabs";
 
 // Market selection schema
 const marketSelectionSchema = z.object({
@@ -231,7 +231,7 @@ export const appRouter = router({
         return result;
       }),
 
-    // ElevenLabs: Generate audio briefing
+    // ElevenLabs: Generate audio briefing (legacy)
     generateAudioBriefing: publicProcedure
       .input(
         z.object({
@@ -249,6 +249,54 @@ export const appRouter = router({
         const briefing = await generateAlphaBriefing(input.markets as MarketBriefing[]);
         return briefing;
       }),
+
+    // Live Hype Briefing: Gemini script + ElevenLabs voice
+    generateLiveHypeBriefing: publicProcedure
+      .input(
+        z.object({
+          markets: z.array(
+            z.object({
+              topic: z.string(),
+              momentum: z.number(),
+              change24h: z.number(),
+              volume: z.string(),
+              hypeScore: z.number(),
+              hypeSummary: z.string().optional(),
+            })
+          ),
+          voice: z.enum(["bill", "charlotte", "rachel", "adam", "josh"]).optional().default("bill"),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const startTime = Date.now();
+        
+        // Step 1: Generate Wall Street-style script using Gemini
+        console.log("[LiveHypeBriefing] Generating script with Gemini...");
+        const scriptResult = await generateLiveHypeBriefing(input.markets as MarketBriefingData[]);
+        
+        // Step 2: Convert script to speech using ElevenLabs Flash v2.5
+        console.log(`[LiveHypeBriefing] Converting to speech with voice: ${input.voice}...`);
+        const audioResult = await generateAudioBriefing(scriptResult.script, input.voice as VoiceOption);
+        
+        const totalTime = Date.now() - startTime;
+        console.log(`[LiveHypeBriefing] Complete in ${totalTime}ms`);
+        
+        return {
+          script: scriptResult.script,
+          wordCount: scriptResult.wordCount,
+          estimatedDuration: scriptResult.estimatedDuration,
+          audioUrl: audioResult.audioUrl,
+          audioBase64: audioResult.audioBase64,
+          model: audioResult.model,
+          voice: audioResult.voice,
+          generationTimeMs: totalTime,
+        };
+      }),
+
+    // Get available voice options
+    getVoiceOptions: publicProcedure.query(() => {
+      return getVoiceOptions();
+    }),
   }),
 });
 

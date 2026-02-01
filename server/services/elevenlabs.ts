@@ -1,15 +1,30 @@
 /**
  * ElevenLabs Service for Audio Narrative
- * Generates "Live Alpha Briefing" audio summaries of top markets
+ * Generates "Live Hype Briefing" audio summaries of top markets
  * Optimized for ultra-low latency using Flash v2.5 model
+ * Professional news anchor voices for Wall Street-style delivery
  */
 
 import { ENV } from "../_core/env";
 
 const ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1";
 
-// Professional news anchor voice
-const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"; // Rachel - professional female voice
+// Professional news anchor voices
+const VOICES = {
+  // Bill - Deep, authoritative male voice (like CNBC anchor)
+  BILL: "pqHfZKP75CvOlQylNhV4",
+  // Charlotte - Professional female news anchor
+  CHARLOTTE: "XB0fDUnXU5powFXDhCwa",
+  // Rachel - Warm professional female voice
+  RACHEL: "21m00Tcm4TlvDq8ikWAM",
+  // Adam - Deep male voice
+  ADAM: "pNInz6obpgDQGcFmaJgB",
+  // Josh - Young professional male
+  JOSH: "TxGEqnHWrfWFTfGW9XjX",
+};
+
+// Default to Bill for that authoritative Wall Street feel
+const DEFAULT_VOICE_ID = VOICES.BILL;
 
 // Model options for different latency requirements
 const MODELS = {
@@ -36,6 +51,23 @@ export interface AudioBriefingResult {
   duration: number;
   script: string;
   model: string;
+  voice: string;
+}
+
+export type VoiceOption = "bill" | "charlotte" | "rachel" | "adam" | "josh";
+
+/**
+ * Get voice ID from voice name
+ */
+function getVoiceId(voice: VoiceOption): string {
+  const voiceMap: Record<VoiceOption, string> = {
+    bill: VOICES.BILL,
+    charlotte: VOICES.CHARLOTTE,
+    rachel: VOICES.RACHEL,
+    adam: VOICES.ADAM,
+    josh: VOICES.JOSH,
+  };
+  return voiceMap[voice] || VOICES.BILL;
 }
 
 /**
@@ -85,13 +117,13 @@ export async function textToSpeech(
         text,
         model_id: modelId,
         voice_settings: {
-          stability: 0.7, // Slightly lower for faster processing
-          similarity_boost: 0.7,
-          style: 0.3, // Lower style for faster generation
-          use_speaker_boost: false, // Disable for lower latency
+          stability: 0.75, // Higher stability for professional delivery
+          similarity_boost: 0.75,
+          style: 0.5, // Moderate style for natural but professional tone
+          use_speaker_boost: true, // Enable for clearer audio
         },
         // Optimize for latency
-        optimize_streaming_latency: 4, // Maximum latency optimization (0-4)
+        optimize_streaming_latency: 3, // Balance between latency and quality
       }),
     });
 
@@ -126,21 +158,56 @@ export async function textToSpeech(
 }
 
 /**
+ * Generate Live Hype Briefing with Wall Street-style delivery
+ * Uses Gemini-generated script and professional news anchor voice
+ */
+export async function generateLiveHypeBriefing(
+  script: string,
+  voice: VoiceOption = "bill"
+): Promise<AudioBriefingResult> {
+  const startTime = Date.now();
+  const voiceId = getVoiceId(voice);
+
+  // Convert to speech using Flash model for instant playback
+  const { audioBase64, model } = await textToSpeech(script, voiceId, true);
+
+  // Calculate duration based on word count (~150 words per minute for professional narration)
+  const wordCount = script.split(/\s+/).length;
+  const estimatedDuration = Math.round((wordCount / 150) * 60);
+
+  const generationTime = Date.now() - startTime;
+  console.log(`[ElevenLabs] Generated Live Hype Briefing in ${generationTime}ms using ${model} with voice ${voice}`);
+
+  return {
+    audioUrl: `data:audio/mpeg;base64,${audioBase64}`,
+    audioBase64,
+    duration: estimatedDuration,
+    script,
+    model,
+    voice,
+  };
+}
+
+/**
  * Generate a complete audio briefing for top markets
  * Optimized for speed with Flash v2.5 model
  */
-export async function generateAlphaBriefing(markets: MarketBriefing[]): Promise<AudioBriefingResult> {
+export async function generateAlphaBriefing(
+  markets: MarketBriefing[],
+  voice: VoiceOption = "bill"
+): Promise<AudioBriefingResult> {
   const startTime = Date.now();
+  const voiceId = getVoiceId(voice);
 
   // Generate the script (optimized for brevity)
   const script = generateBriefingScript(markets);
 
   // Convert to speech using Flash model
-  const { audioBase64, model } = await textToSpeech(script, DEFAULT_VOICE_ID, true);
+  const { audioBase64, model } = await textToSpeech(script, voiceId, true);
 
-  // Estimate duration (roughly 180 words per minute for faster narration)
+  // Estimate duration (roughly 150 words per minute for professional narration)
   const wordCount = script.split(/\s+/).length;
-  const estimatedDuration = Math.round((wordCount / 180) * 60);
+  const estimatedDuration = Math.round((wordCount / 150) * 60);
 
   const generationTime = Date.now() - startTime;
   console.log(`[ElevenLabs] Generated briefing in ${generationTime}ms using ${model}`);
@@ -151,6 +218,7 @@ export async function generateAlphaBriefing(markets: MarketBriefing[]): Promise<
     duration: estimatedDuration,
     script,
     model,
+    voice,
   };
 }
 
@@ -175,10 +243,10 @@ export async function streamTextToSpeech(
         text,
         model_id: MODELS.FLASH,
         voice_settings: {
-          stability: 0.7,
-          similarity_boost: 0.7,
+          stability: 0.75,
+          similarity_boost: 0.75,
         },
-        optimize_streaming_latency: 4,
+        optimize_streaming_latency: 3,
       }),
     });
 
@@ -231,4 +299,17 @@ export async function getAvailableVoices(): Promise<
     console.error("[ElevenLabs] Error fetching voices:", error);
     return [];
   }
+}
+
+/**
+ * Get list of available voice options for the UI
+ */
+export function getVoiceOptions(): Array<{ id: VoiceOption; name: string; description: string }> {
+  return [
+    { id: "bill", name: "Bill", description: "Deep, authoritative male voice - CNBC style" },
+    { id: "charlotte", name: "Charlotte", description: "Professional female news anchor" },
+    { id: "rachel", name: "Rachel", description: "Warm, professional female voice" },
+    { id: "adam", name: "Adam", description: "Deep, commanding male voice" },
+    { id: "josh", name: "Josh", description: "Young, energetic male voice" },
+  ];
 }
