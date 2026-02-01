@@ -40,11 +40,17 @@ export default function VibeRadarChart({
   size = 80,
   className = "",
 }: VibeRadarChartProps) {
-  // Clamp all values to 0-100 range (suggestedMax = 100)
-  const clampedJoy = clamp(joy, 0, 100);
-  const clampedAnxiety = clamp(anxiety, 0, 100);
-  const clampedAnticipation = clamp(anticipation, 0, 100);
-  const clampedSurprise = clamp(surprise, 0, 100);
+  // Convert decimals to 0-100 scale if needed, then clamp
+  // If values are < 1, they're decimals and need to be multiplied by 100
+  const normalizeValue = (val: number) => {
+    const scaled = val < 1 ? val * 100 : val;
+    return clamp(scaled, 0, 100);
+  };
+  
+  const clampedJoy = normalizeValue(joy);
+  const clampedAnxiety = normalizeValue(anxiety);
+  const clampedAnticipation = normalizeValue(anticipation);
+  const clampedSurprise = normalizeValue(surprise);
 
   // Calculate chart area with asymmetric padding
   const chartWidth = size - (PADDING_HORIZONTAL * 2);

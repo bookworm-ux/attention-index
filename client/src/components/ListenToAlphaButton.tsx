@@ -1,9 +1,9 @@
 /*
  * DESIGN: Neo-Brutalist Terminal
- * Alpha Briefing Button Component
- * Triggers Live Alpha Briefing with Gemini script + ElevenLabs voice
+ * Brief Button Component
+ * Triggers Live Briefing with Gemini script + ElevenLabs voice
  * Features: 'Generating Audio...' spinner + pulsing green waveform during playback
- * Voice: Custom Alpha voice (6EW6z8IiJRtePnNUNPKW) with Flash v2.5 model
+ * Voice: Bill (pMsXg8qnD5Ets9xZ9T2o) as default with Flash v2.5 model
  */
 
 import { useState, useRef, useEffect } from "react";
@@ -26,12 +26,12 @@ interface ListenToAlphaButtonProps {
   className?: string;
 }
 
-type VoiceOption = "alpha" | "bill" | "charlotte" | "rachel" | "adam" | "josh";
+type VoiceOption = "bill" | "charlotte" | "rachel" | "adam" | "josh";
 
 export default function ListenToAlphaButton({ markets, className = "" }: ListenToAlphaButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState<VoiceOption>("alpha");
+  const [selectedVoice, setSelectedVoice] = useState<VoiceOption>("bill");
   const [showVoiceMenu, setShowVoiceMenu] = useState(false);
   const [generationProgress, setGenerationProgress] = useState("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -109,7 +109,7 @@ export default function ListenToAlphaButton({ markets, className = "" }: ListenT
 
       toast.success(
         <div className="space-y-1">
-          <p className="font-semibold">Alpha Briefing Live</p>
+          <p className="font-semibold">Briefing Live</p>
           <p className="text-xs opacity-70">
             {result.wordCount} words · ~{result.estimatedDuration}s · {result.generationTimeMs}ms latency
           </p>
@@ -124,7 +124,6 @@ export default function ListenToAlphaButton({ markets, className = "" }: ListenT
   };
 
   const voiceOptions: Array<{ id: VoiceOption; name: string; desc: string }> = [
-    { id: "alpha", name: "Alpha", desc: "Wall Street broadcaster" },
     { id: "bill", name: "Bill", desc: "Authoritative male" },
     { id: "charlotte", name: "Charlotte", desc: "Professional female" },
     { id: "rachel", name: "Rachel", desc: "Warm female" },
@@ -182,7 +181,7 @@ export default function ListenToAlphaButton({ markets, className = "" }: ListenT
         {isGenerating ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin text-[#00FFA3]" />
-            <span className="text-[#00FFA3]">GENERATING AUDIO...</span>
+            <span className="text-[#00FFA3]">GENERATING...</span>
           </>
         ) : isPlaying ? (
           <>
@@ -193,7 +192,7 @@ export default function ListenToAlphaButton({ markets, className = "" }: ListenT
         ) : (
           <>
             <Radio className="w-4 h-4" />
-            <span>ALPHA BRIEFING</span>
+            <span>BRIEF</span>
           </>
         )}
       </button>

@@ -44,3 +44,9 @@
 
 ## Bug Fixes
 - [x] Fix 'fetch failed' error when generating Alpha Briefing
+
+## Final Update
+- [x] UI: Rename 'Alpha Briefing' button to 'Brief'
+- [x] Voice: Remove Alpha, set Bill as default
+- [x] API: Strip JSON/brackets from ElevenLabs text
+- [x] Radar: Set max:100, min:0, multiply decimals by 100

@@ -264,7 +264,7 @@ export const appRouter = router({
               hypeSummary: z.string().optional(),
             })
           ),
-          voice: z.enum(["alpha", "bill", "charlotte", "rachel", "adam", "josh"]).optional().default("alpha"),
+          voice: z.enum(["bill", "charlotte", "rachel", "adam", "josh"]).optional().default("bill"),
         })
       )
       .mutation(async ({ input }) => {
