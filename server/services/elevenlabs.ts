@@ -13,7 +13,7 @@ const ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1";
 // Voice options
 const VOICES = {
   // Bill - Deep, authoritative male voice (default)
-  BILL: "pMsXg8qnD5Ets9xZ9T2o",
+  BILL: "pqHfZKP75CvOlQylNhV4",
   // Charlotte - Professional female news anchor
   CHARLOTTE: "XB0fDUnXU5powFXDhCwa",
   // Rachel - Warm professional female voice
