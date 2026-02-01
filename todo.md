@@ -41,3 +41,6 @@
 - [x] Configure Flash v2.5 model with Stability 40%, Similarity 60%
 - [x] Add 'Generating Audio...' spinner to button
 - [x] Add pulsing green waveform icon during playback
+
+## Bug Fixes
+- [x] Fix 'fetch failed' error when generating Alpha Briefing

@@ -3,6 +3,7 @@
  * Generates "Alpha Briefing" audio summaries of top markets
  * Optimized for ultra-low latency using Flash v2.5 model
  * Custom voice configuration for professional Wall Street-style delivery
+ * Includes retry logic for network failures
  */
 
 import { ENV } from "../_core/env";
@@ -52,6 +53,10 @@ const MODELS = {
   MONOLINGUAL: "eleven_monolingual_v1",
 };
 
+// Retry configuration
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
+
 export interface MarketBriefing {
   topic: string;
   momentum: number;
@@ -70,6 +75,13 @@ export interface AudioBriefingResult {
 }
 
 export type VoiceOption = "alpha" | "bill" | "charlotte" | "rachel" | "adam" | "josh";
+
+/**
+ * Sleep helper for retry delays
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 /**
  * Get voice ID from voice name
@@ -110,14 +122,15 @@ export function generateBriefingScript(markets: MarketBriefing[]): string {
 }
 
 /**
- * Convert text to speech using ElevenLabs API
+ * Convert text to speech using ElevenLabs API with retry logic
  * Uses Flash v2.5 model for sub-second latency
  * Custom voice settings: Stability 40%, Similarity 60%
  */
 export async function textToSpeech(
   text: string,
   voiceId: string = DEFAULT_VOICE_ID,
-  useFlash: boolean = true
+  useFlash: boolean = true,
+  retryCount: number = 0
 ): Promise<{ audioBase64: string; contentType: string; model: string; latencyMs: number }> {
   const startTime = Date.now();
   
@@ -135,7 +148,11 @@ export async function textToSpeech(
       };
 
   try {
-    console.log(`[ElevenLabs] Starting TTS with model: ${modelId}, voice: ${voiceId}`);
+    console.log(`[ElevenLabs] Starting TTS with model: ${modelId}, voice: ${voiceId}${retryCount > 0 ? ` (retry ${retryCount})` : ''}`);
+    
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
     
     const response = await fetch(`${ELEVENLABS_API_URL}/text-to-speech/${voiceId}`, {
       method: "POST",
@@ -151,7 +168,10 @@ export async function textToSpeech(
         // Maximum latency optimization for real-time streaming
         optimize_streaming_latency: 4,
       }),
+      signal: controller.signal,
     });
+    
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -160,7 +180,7 @@ export async function textToSpeech(
       // Fallback to turbo model if flash fails
       if (useFlash && response.status === 400) {
         console.log("[ElevenLabs] Falling back to turbo model");
-        return textToSpeech(text, voiceId, false);
+        return textToSpeech(text, voiceId, false, retryCount);
       }
       
       throw new Error(`ElevenLabs API error: ${response.status}`);
@@ -181,7 +201,19 @@ export async function textToSpeech(
       model: modelId,
       latencyMs,
     };
-  } catch (error) {
+  } catch (error: any) {
+    const isNetworkError = error.message?.includes('fetch failed') || 
+                          error.message?.includes('ECONNRESET') ||
+                          error.message?.includes('network') ||
+                          error.name === 'AbortError';
+    
+    // Retry on network errors
+    if (isNetworkError && retryCount < MAX_RETRIES) {
+      console.log(`[ElevenLabs] Network error, retrying in ${RETRY_DELAY_MS}ms... (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+      await sleep(RETRY_DELAY_MS * (retryCount + 1)); // Exponential backoff
+      return textToSpeech(text, voiceId, useFlash, retryCount + 1);
+    }
+    
     console.error("[ElevenLabs] Error generating speech:", error);
     throw error;
   }
@@ -199,25 +231,30 @@ export async function generateLiveHypeBriefing(
   const startTime = Date.now();
   const voiceId = getVoiceId(voice);
 
-  // Convert to speech using Flash model for instant playback
-  const { audioBase64, model, latencyMs } = await textToSpeech(script, voiceId, true);
+  try {
+    // Convert to speech using Flash model for instant playback
+    const { audioBase64, model, latencyMs } = await textToSpeech(script, voiceId, true);
 
-  // Calculate duration based on word count (~150 words per minute for professional narration)
-  const wordCount = script.split(/\s+/).length;
-  const estimatedDuration = Math.round((wordCount / 150) * 60);
+    // Calculate duration based on word count (~150 words per minute for professional narration)
+    const wordCount = script.split(/\s+/).length;
+    const estimatedDuration = Math.round((wordCount / 150) * 60);
 
-  const totalTime = Date.now() - startTime;
-  console.log(`[ElevenLabs] Generated Alpha Briefing in ${totalTime}ms (TTS: ${latencyMs}ms) using ${model}`);
+    const totalTime = Date.now() - startTime;
+    console.log(`[ElevenLabs] Generated Alpha Briefing in ${totalTime}ms (TTS: ${latencyMs}ms) using ${model}`);
 
-  return {
-    audioUrl: `data:audio/mpeg;base64,${audioBase64}`,
-    audioBase64,
-    duration: estimatedDuration,
-    script,
-    model,
-    voice,
-    latencyMs: totalTime,
-  };
+    return {
+      audioUrl: `data:audio/mpeg;base64,${audioBase64}`,
+      audioBase64,
+      duration: estimatedDuration,
+      script,
+      model,
+      voice,
+      latencyMs: totalTime,
+    };
+  } catch (error) {
+    console.error("[ElevenLabs] Failed to generate Alpha Briefing:", error);
+    throw new Error("Audio generation failed. Please try again.");
+  }
 }
 
 /**
@@ -234,25 +271,30 @@ export async function generateAlphaBriefing(
   // Generate the script (optimized for brevity)
   const script = generateBriefingScript(markets);
 
-  // Convert to speech using Flash model
-  const { audioBase64, model, latencyMs } = await textToSpeech(script, voiceId, true);
+  try {
+    // Convert to speech using Flash model
+    const { audioBase64, model, latencyMs } = await textToSpeech(script, voiceId, true);
 
-  // Estimate duration (roughly 150 words per minute for professional narration)
-  const wordCount = script.split(/\s+/).length;
-  const estimatedDuration = Math.round((wordCount / 150) * 60);
+    // Estimate duration (roughly 150 words per minute for professional narration)
+    const wordCount = script.split(/\s+/).length;
+    const estimatedDuration = Math.round((wordCount / 150) * 60);
 
-  const totalTime = Date.now() - startTime;
-  console.log(`[ElevenLabs] Generated briefing in ${totalTime}ms using ${model}`);
+    const totalTime = Date.now() - startTime;
+    console.log(`[ElevenLabs] Generated briefing in ${totalTime}ms using ${model}`);
 
-  return {
-    audioUrl: `data:audio/mpeg;base64,${audioBase64}`,
-    audioBase64,
-    duration: estimatedDuration,
-    script,
-    model,
-    voice,
-    latencyMs: totalTime,
-  };
+    return {
+      audioUrl: `data:audio/mpeg;base64,${audioBase64}`,
+      audioBase64,
+      duration: estimatedDuration,
+      script,
+      model,
+      voice,
+      latencyMs: totalTime,
+    };
+  } catch (error) {
+    console.error("[ElevenLabs] Failed to generate briefing:", error);
+    throw new Error("Audio generation failed. Please try again.");
+  }
 }
 
 /**

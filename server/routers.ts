@@ -270,27 +270,32 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const startTime = Date.now();
         
-        // Step 1: Generate Wall Street-style script using Gemini
-        console.log("[LiveHypeBriefing] Generating script with Gemini...");
-        const scriptResult = await generateLiveHypeBriefing(input.markets as MarketBriefingData[]);
-        
-        // Step 2: Convert script to speech using ElevenLabs Flash v2.5
-        console.log(`[LiveHypeBriefing] Converting to speech with voice: ${input.voice}...`);
-        const audioResult = await generateAudioBriefing(scriptResult.script, input.voice as VoiceOption);
-        
-        const totalTime = Date.now() - startTime;
-        console.log(`[LiveHypeBriefing] Complete in ${totalTime}ms`);
-        
-        return {
-          script: scriptResult.script,
-          wordCount: scriptResult.wordCount,
-          estimatedDuration: scriptResult.estimatedDuration,
-          audioUrl: audioResult.audioUrl,
-          audioBase64: audioResult.audioBase64,
-          model: audioResult.model,
-          voice: audioResult.voice,
-          generationTimeMs: totalTime,
-        };
+        try {
+          // Step 1: Generate Wall Street-style script using Gemini
+          console.log("[LiveHypeBriefing] Generating script with Gemini...");
+          const scriptResult = await generateLiveHypeBriefing(input.markets as MarketBriefingData[]);
+          
+          // Step 2: Convert script to speech using ElevenLabs Flash v2.5
+          console.log(`[LiveHypeBriefing] Converting to speech with voice: ${input.voice}...`);
+          const audioResult = await generateAudioBriefing(scriptResult.script, input.voice as VoiceOption);
+          
+          const totalTime = Date.now() - startTime;
+          console.log(`[LiveHypeBriefing] Complete in ${totalTime}ms`);
+          
+          return {
+            script: scriptResult.script,
+            wordCount: scriptResult.wordCount,
+            estimatedDuration: scriptResult.estimatedDuration,
+            audioUrl: audioResult.audioUrl,
+            audioBase64: audioResult.audioBase64,
+            model: audioResult.model,
+            voice: audioResult.voice,
+            generationTimeMs: totalTime,
+          };
+        } catch (error: any) {
+          console.error("[LiveHypeBriefing] Error:", error.message || error);
+          throw new Error(`Failed to generate briefing: ${error.message || 'Network error. Please try again.'}`);
+        }
       }),
 
     // Get available voice options
