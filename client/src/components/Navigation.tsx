@@ -1,7 +1,7 @@
 /*
  * DESIGN: Neo-Brutalist Terminal
  * Navigation bar with brutalist typography and glassmorphic background
- * Categories: Trending, Alpha, Crypto, Tech, Culture
+ * Categories: Trending, Crypto, Tech, Culture
  * Now includes Live Hype Briefing button powered by Gemini + ElevenLabs
  */
 
@@ -11,7 +11,6 @@ import ListenToAlphaButton from "./ListenToAlphaButton";
 
 const categories = [
   { id: "trending", label: "TRENDING", icon: Flame },
-  { id: "alpha", label: "ALPHA", icon: Zap },
   { id: "crypto", label: "CRYPTO", icon: Activity },
   { id: "tech", label: "TECH", icon: Code },
   { id: "culture", label: "CULTURE", icon: Sparkles },

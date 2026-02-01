@@ -70,10 +70,11 @@ function sleep(ms: number): Promise<void> {
  * Ensures only clean plain text is sent to ElevenLabs
  */
 function stripJSON(text: string): string {
+  // Force to string and remove all JSON artifacts
+  const cleanText = String(text).replace(/[{\[\]}]/g, '');
+  
   // Remove JSON structure markers
-  let cleaned = text
-    .replace(/^\{|\}$/g, '') // Remove outer braces
-    .replace(/[\{\}\[\]]/g, '') // Remove all brackets
+  let cleaned = cleanText
     .replace(/"([^"]+)":/g, '') // Remove JSON keys
     .replace(/\\n/g, ' ') // Replace escaped newlines with spaces
     .replace(/\\"/g, '"') // Unescape quotes

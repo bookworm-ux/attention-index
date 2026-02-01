@@ -174,7 +174,7 @@ const mockMarkets: MarketData[] = [
   {
     id: "8",
     topic: "AI Regulation EU Vote",
-    category: "Alpha",
+    category: "Tech",
     momentum: 56,
     change24h: 5.4,
     volume: "$312K",
@@ -188,7 +188,7 @@ const mockMarkets: MarketData[] = [
   {
     id: "9",
     topic: "NVIDIA Earnings Leak",
-    category: "Alpha",
+    category: "Tech",
     momentum: 91,
     change24h: 67.3,
     volume: "$1.8M",

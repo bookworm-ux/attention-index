@@ -50,3 +50,8 @@
 - [x] Voice: Remove Alpha, set Bill as default
 - [x] API: Strip JSON/brackets from ElevenLabs text
 - [x] Radar: Set max:100, min:0, multiply decimals by 100
+
+## Data Payload Fix
+- [x] Force string format with JSON artifact removal
+- [x] Confirm voice ID 6EW6z8IiJRtePnNUNPKW passed correctly
+- [x] Delete all "Alpha" references from codebase
