@@ -1,16 +1,30 @@
 /**
  * ElevenLabs Service for Audio Narrative
- * Generates "Live Hype Briefing" audio summaries of top markets
+ * Generates "Alpha Briefing" audio summaries of top markets
  * Optimized for ultra-low latency using Flash v2.5 model
- * Professional news anchor voices for Wall Street-style delivery
+ * Custom voice configuration for professional Wall Street-style delivery
  */
 
 import { ENV } from "../_core/env";
 
 const ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1";
 
-// Professional news anchor voices
+// Custom voice configuration for Alpha Briefing
+// Voice ID: 6EW6z8IiJRtePnNUNPKW - Professional Wall Street broadcaster
+const ALPHA_VOICE_ID = "6EW6z8IiJRtePnNUNPKW";
+
+// Voice settings optimized for broadcast quality
+const ALPHA_VOICE_SETTINGS = {
+  stability: 0.40,          // 40% stability for dynamic delivery
+  similarity_boost: 0.60,   // 60% similarity for natural tone
+  style: 0.3,               // Moderate style for professional broadcast
+  use_speaker_boost: true,  // Enhanced clarity
+};
+
+// Additional voice options for variety
 const VOICES = {
+  // Custom Alpha Voice - Primary broadcaster
+  ALPHA: ALPHA_VOICE_ID,
   // Bill - Deep, authoritative male voice (like CNBC anchor)
   BILL: "pqHfZKP75CvOlQylNhV4",
   // Charlotte - Professional female news anchor
@@ -23,10 +37,10 @@ const VOICES = {
   JOSH: "TxGEqnHWrfWFTfGW9XjX",
 };
 
-// Default to Bill for that authoritative Wall Street feel
-const DEFAULT_VOICE_ID = VOICES.BILL;
+// Default to custom Alpha voice for Wall Street broadcast feel
+const DEFAULT_VOICE_ID = ALPHA_VOICE_ID;
 
-// Model options for different latency requirements
+// Model - Flash v2.5 for sub-second latency
 const MODELS = {
   // Flash v2.5 - Ultra-low latency (~75% faster), optimized for real-time applications
   FLASH: "eleven_flash_v2_5",
@@ -52,22 +66,24 @@ export interface AudioBriefingResult {
   script: string;
   model: string;
   voice: string;
+  latencyMs: number;
 }
 
-export type VoiceOption = "bill" | "charlotte" | "rachel" | "adam" | "josh";
+export type VoiceOption = "alpha" | "bill" | "charlotte" | "rachel" | "adam" | "josh";
 
 /**
  * Get voice ID from voice name
  */
 function getVoiceId(voice: VoiceOption): string {
   const voiceMap: Record<VoiceOption, string> = {
+    alpha: VOICES.ALPHA,
     bill: VOICES.BILL,
     charlotte: VOICES.CHARLOTTE,
     rachel: VOICES.RACHEL,
     adam: VOICES.ADAM,
     josh: VOICES.JOSH,
   };
-  return voiceMap[voice] || VOICES.BILL;
+  return voiceMap[voice] || ALPHA_VOICE_ID;
 }
 
 /**
@@ -95,17 +111,32 @@ export function generateBriefingScript(markets: MarketBriefing[]): string {
 
 /**
  * Convert text to speech using ElevenLabs API
- * Uses Flash v2.5 model for ultra-low latency
+ * Uses Flash v2.5 model for sub-second latency
+ * Custom voice settings: Stability 40%, Similarity 60%
  */
 export async function textToSpeech(
   text: string,
   voiceId: string = DEFAULT_VOICE_ID,
   useFlash: boolean = true
-): Promise<{ audioBase64: string; contentType: string; model: string }> {
-  // Select model based on latency preference
+): Promise<{ audioBase64: string; contentType: string; model: string; latencyMs: number }> {
+  const startTime = Date.now();
+  
+  // Always use Flash v2.5 for sub-second latency
   const modelId = useFlash ? MODELS.FLASH : MODELS.TURBO;
 
+  // Use custom Alpha voice settings for optimal broadcast quality
+  const voiceSettings = voiceId === ALPHA_VOICE_ID 
+    ? ALPHA_VOICE_SETTINGS 
+    : {
+        stability: 0.40,
+        similarity_boost: 0.60,
+        style: 0.3,
+        use_speaker_boost: true,
+      };
+
   try {
+    console.log(`[ElevenLabs] Starting TTS with model: ${modelId}, voice: ${voiceId}`);
+    
     const response = await fetch(`${ELEVENLABS_API_URL}/text-to-speech/${voiceId}`, {
       method: "POST",
       headers: {
@@ -116,14 +147,9 @@ export async function textToSpeech(
       body: JSON.stringify({
         text,
         model_id: modelId,
-        voice_settings: {
-          stability: 0.75, // Higher stability for professional delivery
-          similarity_boost: 0.75,
-          style: 0.5, // Moderate style for natural but professional tone
-          use_speaker_boost: true, // Enable for clearer audio
-        },
-        // Optimize for latency
-        optimize_streaming_latency: 3, // Balance between latency and quality
+        voice_settings: voiceSettings,
+        // Maximum latency optimization for real-time streaming
+        optimize_streaming_latency: 4,
       }),
     });
 
@@ -145,11 +171,15 @@ export async function textToSpeech(
 
     // Convert to base64
     const audioBase64 = Buffer.from(audioBuffer).toString("base64");
+    
+    const latencyMs = Date.now() - startTime;
+    console.log(`[ElevenLabs] TTS completed in ${latencyMs}ms`);
 
     return {
       audioBase64,
       contentType: "audio/mpeg",
       model: modelId,
+      latencyMs,
     };
   } catch (error) {
     console.error("[ElevenLabs] Error generating speech:", error);
@@ -158,25 +188,26 @@ export async function textToSpeech(
 }
 
 /**
- * Generate Live Hype Briefing with Wall Street-style delivery
- * Uses Gemini-generated script and professional news anchor voice
+ * Generate Alpha Briefing with Wall Street-style delivery
+ * Uses Gemini-generated script and custom Alpha voice
+ * Optimized for sub-second latency with Flash v2.5
  */
 export async function generateLiveHypeBriefing(
   script: string,
-  voice: VoiceOption = "bill"
+  voice: VoiceOption = "alpha"
 ): Promise<AudioBriefingResult> {
   const startTime = Date.now();
   const voiceId = getVoiceId(voice);
 
   // Convert to speech using Flash model for instant playback
-  const { audioBase64, model } = await textToSpeech(script, voiceId, true);
+  const { audioBase64, model, latencyMs } = await textToSpeech(script, voiceId, true);
 
   // Calculate duration based on word count (~150 words per minute for professional narration)
   const wordCount = script.split(/\s+/).length;
   const estimatedDuration = Math.round((wordCount / 150) * 60);
 
-  const generationTime = Date.now() - startTime;
-  console.log(`[ElevenLabs] Generated Live Hype Briefing in ${generationTime}ms using ${model} with voice ${voice}`);
+  const totalTime = Date.now() - startTime;
+  console.log(`[ElevenLabs] Generated Alpha Briefing in ${totalTime}ms (TTS: ${latencyMs}ms) using ${model}`);
 
   return {
     audioUrl: `data:audio/mpeg;base64,${audioBase64}`,
@@ -185,6 +216,7 @@ export async function generateLiveHypeBriefing(
     script,
     model,
     voice,
+    latencyMs: totalTime,
   };
 }
 
@@ -194,7 +226,7 @@ export async function generateLiveHypeBriefing(
  */
 export async function generateAlphaBriefing(
   markets: MarketBriefing[],
-  voice: VoiceOption = "bill"
+  voice: VoiceOption = "alpha"
 ): Promise<AudioBriefingResult> {
   const startTime = Date.now();
   const voiceId = getVoiceId(voice);
@@ -203,14 +235,14 @@ export async function generateAlphaBriefing(
   const script = generateBriefingScript(markets);
 
   // Convert to speech using Flash model
-  const { audioBase64, model } = await textToSpeech(script, voiceId, true);
+  const { audioBase64, model, latencyMs } = await textToSpeech(script, voiceId, true);
 
   // Estimate duration (roughly 150 words per minute for professional narration)
   const wordCount = script.split(/\s+/).length;
   const estimatedDuration = Math.round((wordCount / 150) * 60);
 
-  const generationTime = Date.now() - startTime;
-  console.log(`[ElevenLabs] Generated briefing in ${generationTime}ms using ${model}`);
+  const totalTime = Date.now() - startTime;
+  console.log(`[ElevenLabs] Generated briefing in ${totalTime}ms using ${model}`);
 
   return {
     audioUrl: `data:audio/mpeg;base64,${audioBase64}`,
@@ -219,12 +251,13 @@ export async function generateAlphaBriefing(
     script,
     model,
     voice,
+    latencyMs: totalTime,
   };
 }
 
 /**
- * Stream audio generation for even lower latency (experimental)
- * Returns chunks as they're generated
+ * Stream audio generation for even lower latency
+ * Returns chunks as they're generated for immediate playback
  */
 export async function streamTextToSpeech(
   text: string,
@@ -232,6 +265,8 @@ export async function streamTextToSpeech(
   onChunk: (chunk: Uint8Array) => void
 ): Promise<void> {
   try {
+    console.log(`[ElevenLabs] Starting streaming TTS with voice: ${voiceId}`);
+    
     const response = await fetch(`${ELEVENLABS_API_URL}/text-to-speech/${voiceId}/stream`, {
       method: "POST",
       headers: {
@@ -242,11 +277,8 @@ export async function streamTextToSpeech(
       body: JSON.stringify({
         text,
         model_id: MODELS.FLASH,
-        voice_settings: {
-          stability: 0.75,
-          similarity_boost: 0.75,
-        },
-        optimize_streaming_latency: 3,
+        voice_settings: ALPHA_VOICE_SETTINGS,
+        optimize_streaming_latency: 4, // Maximum optimization
       }),
     });
 
@@ -306,6 +338,7 @@ export async function getAvailableVoices(): Promise<
  */
 export function getVoiceOptions(): Array<{ id: VoiceOption; name: string; description: string }> {
   return [
+    { id: "alpha", name: "Alpha", description: "Custom Wall Street broadcaster - Primary" },
     { id: "bill", name: "Bill", description: "Deep, authoritative male voice - CNBC style" },
     { id: "charlotte", name: "Charlotte", description: "Professional female news anchor" },
     { id: "rachel", name: "Rachel", description: "Warm, professional female voice" },

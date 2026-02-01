@@ -35,3 +35,9 @@
 - [x] ElevenLabs: Professional news anchor voice (Bill or Charlotte) with Flash v2.5
 - [x] UI: Listen to Alpha button with volume icon in header
 - [x] UI: Audio waveform animation during playback
+
+## Alpha Briefing Finalization
+- [x] Update ElevenLabs with custom Voice ID 6EW6z8IiJRtePnNUNPKW
+- [x] Configure Flash v2.5 model with Stability 40%, Similarity 60%
+- [x] Add 'Generating Audio...' spinner to button
+- [x] Add pulsing green waveform icon during playback
